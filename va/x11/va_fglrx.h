@@ -25,11 +25,18 @@
 #ifndef VA_FGLRX_H
 #define VA_FGLRX_H
 
+#ifdef HAVE_FGLRX
+
 #include <X11/Xlib.h>
+#include "va_backend.h"
 
 DLL_HIDDEN
-Bool VA_FGLRXGetClientDriverName(Display *dpy, int screen,
-                                 int *ddxDriverMajorVersion, int *ddxDriverMinorVersion,
-                                 int *ddxDriverPatchVersion, char **clientDriverName);
+VAStatus va_FGLRX_GetDriverName(
+    VADisplayContextP pDisplayContext,
+    char **driver_name,
+    int candidate_index
+);
+
+#endif
 
 #endif /* VA_FGLRX_H */
