@@ -59,7 +59,7 @@ static void LoadDriverNameFromRegistry(VADisplayContextWin32* pWin32Ctx)
 #ifndef _WIN64
     BOOL isWowProcess = false;
     if (IsWow64Process(GetCurrentProcess(), &isWowProcess) && isWowProcess)
-        wcscpy(RegistryInfo.ValueName, "VAAPIDriverNameWow");
+        wcscpy(RegistryInfo.ValueName, L"VAAPIDriverNameWow");
 #endif
     D3DKMT_QUERYADAPTERINFO QAI = {
         .Type = KMTQAITYPE_QUERYREGISTRY,
@@ -107,17 +107,12 @@ cleanup:
         free(pRegistryInfo);
     if (pfnCloseAdapter && OpenArgs.hAdapter) {
         D3DKMT_CLOSEADAPTER Close = { OpenArgs.hAdapter };
-        pfnCloseAdapter(&Close);
+        /* The explicit negation is a no-op, yet required to silence the
+         * Wunused-result warning.
+         */
+        (void) !pfnCloseAdapter(&Close);
     }
     FreeLibrary(hGdi32);
-}
-
-static int va_DisplayContextIsValid(
-    VADisplayContextP pDisplayContext
-)
-{
-    return (pDisplayContext != NULL &&
-            pDisplayContext->pDriverContext != NULL);
 }
 
 static void va_DisplayContextDestroy(
@@ -193,7 +188,6 @@ VADisplay vaGetDisplayWin32(
     if (!pDisplayContext)
         return NULL;
 
-    pDisplayContext->vaIsValid       = va_DisplayContextIsValid;
     pDisplayContext->vaDestroy       = va_DisplayContextDestroy;
     pDisplayContext->vaGetDriverNameByIndex = va_DisplayContextGetDriverNameByIndex;
     pDisplayContext->vaGetNumCandidates = va_DisplayContextGetNumCandidates;

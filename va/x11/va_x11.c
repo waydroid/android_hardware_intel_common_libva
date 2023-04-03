@@ -58,14 +58,6 @@ static const struct driver_name_map g_dri2_driver_name_map[] = {
     { NULL,         NULL }
 };
 
-static int va_DisplayContextIsValid(
-    VADisplayContextP pDisplayContext
-)
-{
-    return (pDisplayContext != NULL &&
-            pDisplayContext->pDriverContext != NULL);
-}
-
 static void va_DisplayContextDestroy(
     VADisplayContextP pDisplayContext
 )
@@ -167,14 +159,15 @@ static VAStatus va_DisplayContextGetDriverName(
     char **driver_name, int candidate_index
 )
 {
-    VAStatus vaStatus;
+    VAStatus vaStatus = VA_STATUS_ERROR_UNKNOWN;
 
     if (driver_name)
         *driver_name = NULL;
     else
         return VA_STATUS_ERROR_UNKNOWN;
 
-    vaStatus = va_DRI3_GetDriverName(pDisplayContext, driver_name, candidate_index);
+    if (!getenv("LIBVA_DRI3_DISABLE"))
+        vaStatus = va_DRI3_GetDriverName(pDisplayContext, driver_name, candidate_index);
     if (vaStatus != VA_STATUS_SUCCESS)
         vaStatus = va_DRI2_GetDriverName(pDisplayContext, driver_name, candidate_index);
 #ifdef HAVE_NVCTRL
@@ -194,9 +187,10 @@ static VAStatus va_DisplayContextGetNumCandidates(
     int *num_candidates
 )
 {
-    VAStatus vaStatus;
+    VAStatus vaStatus = VA_STATUS_ERROR_UNKNOWN;
 
-    vaStatus = va_DRI3_GetNumCandidates(pDisplayContext, num_candidates);
+    if (!getenv("LIBVA_DRI3_DISABLE"))
+        vaStatus = va_DRI3_GetNumCandidates(pDisplayContext, num_candidates);
     if (vaStatus != VA_STATUS_SUCCESS)
         vaStatus = va_DRI2_GetNumCandidates(pDisplayContext, num_candidates);
 
@@ -225,7 +219,6 @@ VADisplay vaGetDisplay(
     if (!pDisplayContext)
         return NULL;
 
-    pDisplayContext->vaIsValid       = va_DisplayContextIsValid;
     pDisplayContext->vaDestroy       = va_DisplayContextDestroy;
     pDisplayContext->vaGetNumCandidates = va_DisplayContextGetNumCandidates;
     pDisplayContext->vaGetDriverNameByIndex = va_DisplayContextGetDriverName;

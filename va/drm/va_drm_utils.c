@@ -27,6 +27,7 @@
 #include "sysdeps.h"
 #include <xf86drm.h>
 #include <sys/stat.h>
+#include <sys/utsname.h>
 #include "va_drm_utils.h"
 #include "va_drmcommon.h"
 
@@ -44,6 +45,7 @@ static const struct driver_name_map g_driver_name_map[] = {
     { "radeon",     "radeonsi" }, // Mesa Gallium driver
     { "amdgpu",     "radeonsi" }, // Mesa Gallium driver
     { "nouveau",    "nouveau"   },// Mesa Gallium driver
+    { "WSL",        "d3d12"    }, // Mesa Gallium driver
     { "nvidia-drm", "nvidia"   }, // NVIDIA driver
     { NULL,         NULL }
 };
@@ -112,8 +114,17 @@ VA_DRM_GetDriverName(VADriverContextP ctx, char **driver_name_ptr, int candidate
         return VA_STATUS_ERROR_INVALID_DISPLAY;
 
     *driver_name_ptr = va_DRM_GetDrmDriverName(drm_state->fd);
+
     if (!*driver_name_ptr)
         return VA_STATUS_ERROR_UNKNOWN;
+
+    /* Map vgem to WSL2 for Windows subsystem for linux */
+    struct utsname sysinfo = {};
+    if (!strncmp(*driver_name_ptr, "vgem", 4) && uname(&sysinfo) >= 0 &&
+        strstr(sysinfo.release, "WSL")) {
+        free(*driver_name_ptr);
+        *driver_name_ptr = strdup("WSL");
+    }
 
     for (m = g_driver_name_map; m->key != NULL; m++) {
         if (strcmp(m->key, *driver_name_ptr) == 0) {
