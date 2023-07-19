@@ -7,7 +7,7 @@
 # - reset micro version to zero when VA-API major or minor version is changed
 project(
   'libva', 'c',
-  version : '2.18.0',
+  version : '2.19.0',
   meson_version : '>= 0.53.0',
   default_options : [ 'warning_level=1',
                       'buildtype=debugoptimized' ])
@@ -19,7 +19,7 @@ project(
 # - reset micro version to zero when minor version is incremented
 # - reset minor version to zero when major version is incremented
 va_api_major_version = 1
-va_api_minor_version = 18
+va_api_minor_version = 19
 va_api_micro_version = 0
 
 va_api_version = '@0@.@1@.@2@'.format(va_api_major_version,
@@ -67,7 +67,16 @@ sysconfdir = join_paths(get_option('prefix'), get_option('sysconfdir'))
 
 driverdir = get_option('driverdir')
 if driverdir == ''
-  driverdir = join_paths(get_option('prefix'), get_option('libdir'), 'dri')
+  # "libdir" on Windows is essentially only for static and import libraries,
+  # while "bindir" is the actual runtime directory - containing both
+  # executable and dynamic libraries. During install meson uses correct install
+  # location depending on the type of library, requiring zero user intervention
+  # in the common case.
+  if host_machine.system() == 'windows'
+    driverdir = join_paths(get_option('prefix'), get_option('bindir'))
+  else
+    driverdir = join_paths(get_option('prefix'), get_option('libdir'), 'dri')
+  endif
 endif
 
 configinc = include_directories('.')
@@ -132,6 +141,10 @@ elif get_option('with_legacy').contains('nvctrl')
   c_args += ['-DHAVE_NVCTRL']
 elif get_option('with_legacy').contains('fglrx')
   c_args += ['-DHAVE_FGLRX']
+endif
+
+if cc.has_function('secure_getenv')
+  c_args += ['-DHAVE_SECURE_GETENV']
 endif
 
 add_project_arguments(c_args, language: ['c'])
