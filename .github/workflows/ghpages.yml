@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
     - name: 'Checkout'
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         fetch-depth: 0
     - name: 'Get latest tag'
@@ -47,11 +47,11 @@ jobs:
 
     - name: 'Upload the artifacts'
       if: github.ref_name == env.GIT_LATEST_TAG
-      uses: actions/upload-pages-artifact@v1
+      uses: actions/upload-pages-artifact@v2
       with:
         path: "_build/doc/html-out"
 
     - name: 'Deploy to GitHub Pages'
       if: github.ref_name == env.GIT_LATEST_TAG
       id: deployment
-      uses: actions/deploy-pages@v1
+      uses: actions/deploy-pages@v2
