@@ -53,7 +53,7 @@ va_DRM_GetDrmDriverName(int fd)
 VAStatus
 VA_DRM_GetDriverNames(VADriverContextP ctx, char **drivers, unsigned *num_drivers)
 {
-#define MAX_NAMES 2 // Adjust if needed
+#define MAX_NAMES 3 // Adjust if needed
 
     static const struct {
         const char * const drm_driver;
