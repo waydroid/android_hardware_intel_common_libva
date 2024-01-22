@@ -314,8 +314,10 @@ typedef struct  _VAEncSequenceParameterBufferAV1 {
             uint32_t    subsampling_x                               : 1;
             /** \brief Corresponds to AV1 syntax element of the same name. */
             uint32_t    subsampling_y                               : 1;
+            /** \brief Corresponds to AV1 syntax element of the same name. */
+            uint32_t    mono_chrome                                 : 1;
             /** \brief Reserved bytes for future use, must be zero. */
-            uint32_t    reserved_bits                               : 13;
+            uint32_t    reserved_bits                               : 12;
         } bits;
         uint32_t value;
     } seq_fields;
@@ -910,7 +912,8 @@ typedef struct  _VAEncPictureParameterBufferAV1 {
      *  underline encoder. Otherwise, app can set it to 0 and ignored by driver.
      *
      *  In BRC mode, obu_size needs to be updated and this parameter should be set.
-     *  In CQP mode, this parameter should be set to 0 and ignored by driver.
+     *  In CQP mode, obu_size needs to be updated if \c enable_frame_obu == 1. Otherwise
+     *  this parameter should be set to 0 and ignored by driver.
      */
     uint32_t    byte_offset_frame_hdr_obu_size;
 

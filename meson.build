@@ -7,7 +7,7 @@
 # - reset micro version to zero when VA-API major or minor version is changed
 project(
   'libva', 'c',
-  version : '2.16.0',
+  version : '2.20.0',
   meson_version : '>= 0.53.0',
   default_options : [ 'warning_level=1',
                       'buildtype=debugoptimized' ])
@@ -19,7 +19,7 @@ project(
 # - reset micro version to zero when minor version is incremented
 # - reset minor version to zero when major version is incremented
 va_api_major_version = 1
-va_api_minor_version = 16
+va_api_minor_version = 20
 va_api_micro_version = 0
 
 va_api_version = '@0@.@1@.@2@'.format(va_api_major_version,
@@ -67,7 +67,16 @@ sysconfdir = join_paths(get_option('prefix'), get_option('sysconfdir'))
 
 driverdir = get_option('driverdir')
 if driverdir == ''
-  driverdir = join_paths(get_option('prefix'), get_option('libdir'), 'dri')
+  # "libdir" on Windows is essentially only for static and import libraries,
+  # while "bindir" is the actual runtime directory - containing both
+  # executable and dynamic libraries. During install meson uses correct install
+  # location depending on the type of library, requiring zero user intervention
+  # in the common case.
+  if host_machine.system() == 'windows'
+    driverdir = join_paths(get_option('prefix'), get_option('bindir'))
+  else
+    driverdir = join_paths(get_option('prefix'), get_option('libdir'), 'dri')
+  endif
 endif
 
 configinc = include_directories('.')
@@ -75,9 +84,8 @@ configinc = include_directories('.')
 cc = meson.get_compiler('c')
 dl_dep = cc.find_library('dl', required : false)
 
-libdrm_dep = dependency('libdrm', version : '>= 2.4.60')
-
-WITH_DRM = not get_option('disable_drm')
+WITH_DRM = not get_option('disable_drm') and (host_machine.system() != 'windows')
+libdrm_dep = dependency('libdrm', version : '>= 2.4.60', required : (host_machine.system() != 'windows'))
 
 WITH_X11 = false
 if get_option('with_x11') != 'no'
@@ -86,6 +94,11 @@ if get_option('with_x11') != 'no'
   xfixes_dep = dependency('xfixes', required : get_option('with_x11') == 'yes')
 
   WITH_X11 = (x11_dep.found() and xext_dep.found() and xfixes_dep.found())
+
+  x11_xcb_dep = dependency('x11-xcb', required : get_option('with_x11') == 'yes')
+  xcb_dep = dependency('xcb', required : get_option('with_x11') == 'yes')
+  xcb_dri3_dep = dependency('xcb-dri3', required : get_option('with_x11') == 'yes')
+  WITH_X11 = (WITH_X11 and x11_xcb_dep.found() and xcb_dep.found() and xcb_dri3_dep.found())
 endif
 
 if not WITH_X11 and get_option('with_glx') == 'yes'
@@ -111,19 +124,30 @@ if get_option('with_wayland') != 'no'
   WITH_WAYLAND = wayland_dep.found() and wayland_scanner_dep.found()
 endif
 
-va_c_args = []
-if get_option('enable_va_messaging')
-  va_c_args += ['-DENABLE_VA_MESSAGING=1']
+WITH_WIN32 = false
+libwin32_dep = []
+if get_option('with_win32') != 'no'
+    WITH_WIN32 = (host_machine.system() == 'windows')
 endif
 
-# Symbol visibility
-if cc.has_argument('-fvisibility=hidden')
-  va_c_args += ['-DHAVE_GNUC_VISIBILITY_ATTRIBUTE']
+if (not WITH_DRM and not WITH_X11 and not WITH_WAYLAND and not WITH_WIN32)
+  error('Please install at least one backend dev files (DRM, X11, Wayland, WIN32)')
 endif
 
-if (not WITH_DRM and not WITH_X11 and not WITH_WAYLAND)
-  error('Please install at least one backend dev files (DRM, X11, Wayland)')
+c_args = []
+if get_option('with_legacy').contains('emgd')
+  c_args += ['-DHAVE_EMGD']
+elif get_option('with_legacy').contains('nvctrl')
+  c_args += ['-DHAVE_NVCTRL']
+elif get_option('with_legacy').contains('fglrx')
+  c_args += ['-DHAVE_FGLRX']
 endif
+
+if cc.has_function('secure_getenv')
+  c_args += ['-DHAVE_SECURE_GETENV']
+endif
+
+add_project_arguments(c_args, language: ['c'])
 
 subdir('va')
 subdir('pkgconfig')

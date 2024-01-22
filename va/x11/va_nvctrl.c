@@ -23,6 +23,9 @@
 
 #define _GNU_SOURCE 1
 #include "sysdeps.h"
+
+#ifdef HAVE_NVCTRL
+
 #include <string.h>
 
 #define NEED_REPLIES
@@ -340,7 +343,7 @@ static Bool XNVCTRLQueryStringAttribute(
 }
 
 
-Bool VA_NVCTRLQueryDirectRenderingCapable(Display *dpy, int screen,
+static Bool VA_NVCTRLQueryDirectRenderingCapable(Display *dpy, int screen,
         Bool *isCapable)
 {
     int event_base;
@@ -358,18 +361,10 @@ Bool VA_NVCTRLQueryDirectRenderingCapable(Display *dpy, int screen,
     return True;
 }
 
-Bool VA_NVCTRLGetClientDriverName(Display *dpy, int screen,
-                                  int *ddxDriverMajorVersion, int *ddxDriverMinorVersion,
-                                  int *ddxDriverPatchVersion, char **clientDriverName)
+static Bool VA_NVCTRLGetClientDriverName(Display *dpy, int screen,
+        char **clientDriverName)
 {
-    if (ddxDriverMajorVersion)
-        *ddxDriverMajorVersion = 0;
-    if (ddxDriverMinorVersion)
-        *ddxDriverMinorVersion = 0;
-    if (ddxDriverPatchVersion)
-        *ddxDriverPatchVersion = 0;
-    if (clientDriverName)
-        *clientDriverName = NULL;
+    int ddxDriverMajorVersion, ddxDriverMinorVersion, ddxDriverPatchVersion;
 
     char *nvidia_driver_version = NULL;
     if (!XNVCTRLQueryStringAttribute(dpy, screen, 0, NV_CTRL_STRING_NVIDIA_DRIVER_VERSION, &nvidia_driver_version))
@@ -378,27 +373,49 @@ Bool VA_NVCTRLGetClientDriverName(Display *dpy, int screen,
     char *end, *str = nvidia_driver_version;
     unsigned long v = strtoul(str, &end, 10);
     if (end && end != str) {
-        if (ddxDriverMajorVersion)
-            *ddxDriverMajorVersion = v;
+        ddxDriverMajorVersion = v;
         if (*(str = end) == '.') {
             v = strtoul(str + 1, &end, 10);
             if (end && end != str && (*end == '.' || *end == '\0')) {
-                if (ddxDriverMinorVersion)
-                    *ddxDriverMinorVersion = v;
+                ddxDriverMinorVersion = v;
                 if (*(str = end) == '.') {
                     v = strtoul(str + 1, &end, 10);
                     if (end && end != str && *end == '\0') {
-                        if (ddxDriverPatchVersion)
-                            *ddxDriverPatchVersion = v;
+                        ddxDriverPatchVersion = v;
                     }
                 }
             }
         }
     }
     Xfree(nvidia_driver_version);
+    (void) ddxDriverMajorVersion;
+    (void) ddxDriverMinorVersion;
+    (void) ddxDriverPatchVersion;
 
-    if (clientDriverName)
-        *clientDriverName = strdup("nvidia");
+    *clientDriverName = strdup("nvidia");
 
     return True;
 }
+
+VAStatus va_NVCTRL_GetDriverNames(
+    VADisplayContextP pDisplayContext,
+    char **drivers,
+    unsigned *num_drivers
+)
+{
+    VADriverContextP ctx = pDisplayContext->pDriverContext;
+    int direct_capable;
+
+    if (!VA_NVCTRLQueryDirectRenderingCapable(ctx->native_dpy, ctx->x11_screen,
+            &direct_capable) || !direct_capable)
+        return VA_STATUS_ERROR_UNKNOWN;
+
+    if (!VA_NVCTRLGetClientDriverName(ctx->native_dpy, ctx->x11_screen,
+                                      drivers))
+        return VA_STATUS_ERROR_UNKNOWN;
+
+    *num_drivers = 1;
+    return VA_STATUS_SUCCESS;
+}
+
+#endif

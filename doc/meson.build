@@ -1,4 +1,8 @@
- headerdir = join_paths(meson.source_root(), 'va')
+if meson.version().version_compare('>= 0.56')
+  headerdir = join_paths(meson.project_source_root(), 'va')
+else
+  headerdir = join_paths(meson.source_root(), 'va')
+endif
 footer = join_paths(meson.current_source_dir(), 'va_footer.html')
 
 libva_headers_doc = [
@@ -9,6 +13,7 @@ libva_headers_doc = [
   'va_enc_hevc.h',
   'va_enc_vp8.h',
   'va_enc_vp9.h',
+  'va_enc_av1.h',
   'va_fei.h',
   'va_fei_h264.h',
   'va_fei_hevc.h',
@@ -29,7 +34,7 @@ foreach h : libva_headers_doc
 endforeach
 
 config = configuration_data()
-config.set('PACKAGE_VERSION', meson.project_version())
+config.set('PACKAGE_VERSION', libva_version)
 config.set('VA_HEADER_DIR', headerdir)
 config.set('VA_HEADER_FILES', headers)
 config.set('VA_HTML_FOOTER', footer)

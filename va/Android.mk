@@ -55,7 +55,6 @@ LOCAL_CFLAGS_64 += \
 
 LOCAL_CFLAGS := \
     $(IGNORED_WARNNING) \
-    $(if $(filter user,$(TARGET_BUILD_VARIANT)),,-DENABLE_VA_MESSAGING) \
     -DLOG_TAG=\"libva\" \
     -DSYSCONFDIR="\"$(LIBVA_CONFIG_DIR)\""
 
