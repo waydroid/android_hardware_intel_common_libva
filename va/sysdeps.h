@@ -36,24 +36,19 @@
 #include <stdint.h>
 #include <assert.h>
 
-#ifdef ANDROID
-# define Bool  int
-# define True  1
-# define False 0
-
-/* Macros generated from configure */
-# define LIBVA_VERSION_S "1.1.0"
-
-/* Android logging utilities */
-# include <log/log.h>
-#endif
-
-#if defined __GNUC__ && defined HAVE_GNUC_VISIBILITY_ATTRIBUTE
+// Defines for visibility attribute
+// based on https://gcc.gnu.org/wiki/Visibility
+#if defined _WIN32 || defined __CYGWIN__
+# define DLL_EXPORT __declspec(dllexport)
+# define DLL_HIDDEN
+#else
+#if __GNUC__ >= 4
 # define DLL_HIDDEN __attribute__((visibility("hidden")))
 # define DLL_EXPORT __attribute__((visibility("default")))
 #else
 # define DLL_HIDDEN
 # define DLL_EXPORT
+#endif
 #endif
 
 #endif /* SYSDEPS_H */

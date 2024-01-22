@@ -23,11 +23,15 @@
  */
 
 #include "sysdeps.h"
+
+#ifdef HAVE_FGLRX
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <dlfcn.h>
 #include <X11/Xlib.h>
+#include "va_fglrx.h"
 
 #define ADL_OK 0
 #define ADL_MAX_PATH 256
@@ -121,9 +125,7 @@ static int match_display_name(Display *x11_dpy, const char *display_name)
     return m;
 }
 
-Bool VA_FGLRXGetClientDriverName(Display *dpy, int screen,
-                                 int *ddxDriverMajorVersion, int *ddxDriverMinorVersion,
-                                 int *ddxDriverPatchVersion, char **clientDriverName)
+static Bool VA_FGLRXGetClientDriverName(Display *dpy, int screen, char **clientDriverName)
 {
     ADL_MAIN_CONTROL_CREATE          ADL_Main_Control_Create;
     ADL_MAIN_CONTROL_DESTROY         ADL_Main_Control_Destroy;
@@ -137,15 +139,6 @@ Bool VA_FGLRXGetClientDriverName(Display *dpy, int screen,
     Bool success = False;
     int is_adl_initialized = 0;
     int i, num_adapters, lpAdapterInfo_size, lpXScreenInfo_size;
-
-    if (ddxDriverMajorVersion)
-        *ddxDriverMajorVersion = 0;
-    if (ddxDriverMinorVersion)
-        *ddxDriverMinorVersion = 0;
-    if (ddxDriverPatchVersion)
-        *ddxDriverPatchVersion = 0;
-    if (clientDriverName)
-        *clientDriverName = NULL;
 
     libadl_handle = dlopen("libatiadlxx.so", RTLD_LAZY | RTLD_GLOBAL);
     if (!libadl_handle)
@@ -227,9 +220,8 @@ Bool VA_FGLRXGetClientDriverName(Display *dpy, int screen,
 #endif
         if (screen == lpCurrXScreenInfo->iXScreenNum &&
             match_display_name(dpy, lpCurrAdapterInfo->strDisplayName)) {
-            if (clientDriverName)
-                *clientDriverName = strdup("fglrx");
-            success = True;
+            *clientDriverName = strdup("fglrx");
+            success = !!(*clientDriverName);
             break;
         }
     }
@@ -245,3 +237,20 @@ end:
         dlclose(libadl_handle);
     return success;
 }
+
+VAStatus va_FGLRX_GetDriverNames(
+    VADisplayContextP pDisplayContext,
+    char **drivers,
+    unsigned *num_drivers
+)
+{
+    VADriverContextP ctx = pDisplayContext->pDriverContext;
+    if (!VA_FGLRXGetClientDriverName(ctx->native_dpy, ctx->x11_screen,
+                                     drivers))
+        return VA_STATUS_ERROR_UNKNOWN;
+
+    *num_drivers = 1;
+    return VA_STATUS_SUCCESS;
+}
+
+#endif

@@ -1,38 +1,28 @@
 name: ubuntu
 
-on:
-  push:
-    paths-ignore:
-    - '.github/workflows/**'
-    - '!.github/workflows/ubuntu.yml'
-  pull_request:
-    paths-ignore:
-    - '.github/workflows/**'
-    - '!.github/workflows/ubuntu.yml'
+on: [push, pull_request]
 
 env:
   CFLAGS: -Wall -Werror
 
 jobs:
-  clang-15:
-    runs-on: ubuntu-22.04
+  test:
+    strategy:
+      matrix:
+        compiler: [clang-15, gcc]
+        os: [ubuntu-22.04, ubuntu-20.04]
+        build: [meson, autotools]
+    runs-on: ${{ matrix.os }}
     env:
-      CC: /usr/bin/clang-15
-      CXX: /usr/bin/clang++-15
-      ASM: /usr/bin/clang-15
+      CC: ${{ matrix.compiler }}
+      DISTRO: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v2
-    - name: install toolchain
-      run: |
-        if [[ -e $CC && -e $CXX ]]; then \
-          echo "clang-15 already presents in the image"; \
-        else \
-          echo "clang-15 missed in the image, installing from llvm"; \
-          echo "deb [trusted=yes] http://apt.llvm.org/jammy/ llvm-toolchain-jammy-15 main" | sudo tee -a /etc/apt/sources.list; \
-          sudo apt-get update; \
-          sudo apt-get install -y --no-install-recommends clang-15; \
-        fi
-    - name: install prerequisites
+    - name: 'Checkout'
+      uses: actions/checkout@v4
+    - name: 'Install toolchain'
+      if: ${{ (matrix.compiler == 'clang-15') }}
+      run: .github/workflows/install-clang.sh 15
+    - name: 'Install prerequisites'
       run: |
         sudo apt-get update
         sudo apt-get install -y \
@@ -40,63 +30,30 @@ jobs:
           libegl1-mesa-dev \
           libgl1-mesa-dev \
           libx11-dev \
+          libx11-xcb-dev \
+          libxcb-dri3-dev \
           libxext-dev \
           libxfixes-dev \
-          libwayland-dev
-    - name: configure
-      run: ./autogen.sh --prefix=/usr
-    - name: build
-      run: make
-    - name: check
-      run: make check
-    - name: install
-      run: sudo make install
+          libwayland-dev \
+          meson
+    - name: 'Print compiler version'
+      run: ${{ matrix.compiler }} --version
+    - name: 'Configure (meson)'
+      if: ${{ (matrix.build == 'meson') }}
+      run: meson setup ./builddir --prefix=/usr
+    - name: 'Build (meson)'
+      if: ${{ (matrix.build == 'meson') }}
+      run: meson compile -C ./builddir || ninja -C ./builddir
+    - name: 'Install (meson)'
+      if: ${{ (matrix.build == 'meson') }}
+      run: sudo meson install -C ./builddir
 
-  ubuntu-22-04:
-    runs-on: ubuntu-22.04
-    steps:
-    - uses: actions/checkout@v2
-    - name: install prerequisites
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-          libdrm-dev \
-          libegl1-mesa-dev \
-          libgl1-mesa-dev \
-          libx11-dev \
-          libxext-dev \
-          libxfixes-dev \
-          libwayland-dev
-    - name: configure
+    - name: 'Configure (autotools)'
+      if: ${{ (matrix.build == 'autotools') }}
       run: ./autogen.sh --prefix=/usr
-    - name: build
+    - name: 'Build (autotools)'
+      if: ${{ (matrix.build == 'autotools') }}
       run: make
-    - name: check
-      run: make check
-    - name: install
+    - name: 'Build and Install (autotools)'
+      if: ${{ (matrix.build == 'autotools') }}
       run: sudo make install
-
-  ubuntu-20-04:
-    runs-on: ubuntu-20.04
-    steps:
-    - uses: actions/checkout@v2
-    - name: install prerequisites
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-          libdrm-dev \
-          libegl1-mesa-dev \
-          libgl1-mesa-dev \
-          libx11-dev \
-          libxext-dev \
-          libxfixes-dev \
-          libwayland-dev
-    - name: configure
-      run: ./autogen.sh --prefix=/usr
-    - name: build
-      run: make
-    - name: check
-      run: make check
-    - name: install
-      run: sudo make install
-

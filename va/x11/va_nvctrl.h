@@ -24,15 +24,18 @@
 #ifndef VA_NVCTRLLIB_H
 #define VA_NVCTRLLIB_H
 
+#ifdef HAVE_NVCTRL
+
 #include <X11/Xlib.h>
+#include "va_backend.h"
 
 DLL_HIDDEN
-Bool VA_NVCTRLQueryDirectRenderingCapable(Display *dpy, int screen,
-        Bool *isCapable);
+VAStatus va_NVCTRL_GetDriverNames(
+    VADisplayContextP pDisplayContext,
+    char **drivers,
+    unsigned *num_drivers
+);
 
-DLL_HIDDEN
-Bool VA_NVCTRLGetClientDriverName(Display *dpy, int screen,
-                                  int *ddxDriverMajorVersion, int *ddxDriverMinorVersion,
-                                  int *ddxDriverPatchVersion, char **clientDriverName);
+#endif
 
 #endif /* VA_NVCTRLLIB_H */

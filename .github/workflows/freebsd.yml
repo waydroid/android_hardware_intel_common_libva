@@ -1,26 +1,20 @@
 name: freebsd
 
-on:
-  push:
-    paths-ignore:
-    - '.github/workflows/**'
-    - '!.github/workflows/freebsd.yml'
-  pull_request:
-    paths-ignore:
-    - '.github/workflows/**'
-    - '!.github/workflows/freebsd.yml'
+on: [push, pull_request]
 
 jobs:
   freebsd:
     runs-on: macos-12
     steps:
-    - uses: actions/checkout@v2
-    - name: test
+    - name: 'Checkout'
+      uses: actions/checkout@v4
+    - name: 'Install prerequisites and build'
       uses: vmactions/freebsd-vm@v0
       with:
         prepare: |
           pkg install -y meson pkgconf libdrm libXext libXfixes wayland
           pkg install -y -x '^mesa($|-libs)'
         run: |
-          meson _build
+          meson setup _build -D werror=true
           meson compile -C _build
+          meson install -C _build

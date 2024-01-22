@@ -305,7 +305,7 @@ typedef int VAStatus;   /** Return status type from functions */
 #define VA_STATUS_ERROR_NOT_ENOUGH_BUFFER       0x00000025
 /** \brief Indicate an operation isn't completed because time-out interval elapsed. */
 #define VA_STATUS_ERROR_TIMEDOUT                0x00000026
-#define VA_STATUS_ERROR_UNKNOWN         0xFFFFFFFF
+#define VA_STATUS_ERROR_UNKNOWN                 0xFFFFFFFF
 
 /**
  * 1. De-interlacing flags for vaPutSurface()
@@ -401,6 +401,7 @@ typedef int VAStatus;   /** Return status type from functions */
  */
 const char *vaErrorStr(VAStatus error_status);
 
+/** \brief Structure to describe rectangle. */
 typedef struct _VARectangle {
     int16_t x;
     int16_t y;
@@ -410,12 +411,18 @@ typedef struct _VARectangle {
 
 /** \brief Generic motion vector data structure. */
 typedef struct _VAMotionVector {
-    /** \mv0[0]: horizontal motion vector for past reference */
-    /** \mv0[1]: vertical motion vector for past reference */
-    /** \mv1[0]: horizontal motion vector for future reference */
-    /** \mv1[1]: vertical motion vector for future reference */
-    int16_t  mv0[2];  /* past reference */
-    int16_t  mv1[2];  /* future reference */
+    /** \brief Past reference
+     *
+     * - \c [0]: horizontal motion vector for past reference
+     * - \c [1]: vertical motion vector for past reference
+     */
+    int16_t  mv0[2];
+    /** \brief Future reference
+     *
+     * - \c [0]: horizontal motion vector for future reference
+     * - \c [1]: vertical motion vector for future reference
+     */
+    int16_t  mv1[2];
 } VAMotionVector;
 
 /** Type of a message callback, used for both error and info log. */
@@ -530,7 +537,8 @@ typedef enum {
     VAProfileAV1Profile1                = 33,
     VAProfileHEVCSccMain444_10          = 34,
     /** \brief Profile ID used for protected video playback. */
-    VAProfileProtected                  = 35
+    VAProfileProtected                  = 35,
+    VAProfileH264High10                 = 36
 } VAProfile;
 
 /**
@@ -661,8 +669,8 @@ typedef enum {
      * at vaBeginPicture() time refers to the decode output surface.  The
      * target surface for the output of processing needs to be a different
      * surface since the decode process requires the original reconstructed buffer.
-     * The “surface” member of VAProcPipelineParameterBuffer should be set to the
-     * same as “render_target” set in vaBeginPicture(), but the driver may choose
+     * The "surface" member of VAProcPipelineParameterBuffer should be set to the
+     * same as "render_target" set in vaBeginPicture(), but the driver may choose
      * to ignore this parameter.
      */
     VAConfigAttribDecProcessing     = 8,
@@ -1143,8 +1151,10 @@ typedef union _VAConfigAttribValDecJPEG {
     struct {
         /** \brief Set to (1 << VA_ROTATION_xxx) for supported rotation angles. */
         uint32_t rotation : 4;
+        /** \brief set to 1 for crop and partial decode support, 0 if not supported */
+        uint32_t crop : 1;
         /** \brief Reserved for future use. */
-        uint32_t reserved : 28;
+        uint32_t reserved : 27;
     } bits;
     uint32_t value;
 } VAConfigAttribValDecJPEG;
@@ -1691,9 +1701,9 @@ typedef struct _VASurfaceAttrib {
 
 /**
  * @name VASurfaceAttribMemoryType values in bit fields.
- * Bit 0:7 are reserved for generic types, Bit 31:28 are reserved for
- * Linux DRM, Bit 23:20 are reserved for Android. DRM and Android specific
- * types are defined in DRM and Android header files.
+ * Bits 0:7 are reserved for generic types. Bits 31:28 are reserved for
+ * Linux DRM. Bits 23:20 are reserved for Android. Bits 19:16 are reserved for Win32.
+ * DRM, Android and Win32 specific types are defined in respective va_*.h header files.
  */
 /**@{*/
 /** \brief VA memory type (default) is supported. */
@@ -1770,7 +1780,7 @@ typedef struct _VASurfaceAttribExternalBuffers {
  * \brief Queries surface attributes for the supplied config.
  *
  * This function queries for all supported attributes for the
- * supplied VA @config. In particular, if the underlying hardware
+ * supplied VA \c config. In particular, if the underlying hardware
  * supports the creation of VA surfaces in various formats, then
  * this function will enumerate all pixel formats that are supported.
  *
@@ -4197,6 +4207,7 @@ VAStatus vaQuerySurfaceStatus(
 typedef enum {
     VADecodeSliceMissing            = 0,
     VADecodeMBError                 = 1,
+    VADecodeReset                   = 2,
 } VADecodeErrorType;
 
 /**
@@ -4216,9 +4227,15 @@ typedef struct _VASurfaceDecodeMBErrors {
 /**
  * After the application gets VA_STATUS_ERROR_DECODING_ERROR after calling vaSyncSurface(),
  * it can call vaQuerySurfaceError to find out further details on the particular error.
- * VA_STATUS_ERROR_DECODING_ERROR should be passed in as "error_status",
- * upon the return, error_info will point to an array of _VASurfaceDecodeMBErrors structure,
- * which is allocated and filled by libVA with detailed information on the missing or error macroblocks.
+ * VA_STATUS_ERROR_DECODING_ERROR should be passed in as "error_status".
+ *
+ * After the applications get VA_STATUS_HW_BUSY or VA_STATUS_SUCCESSFULL from vaSyncSurface(),
+ * it still can call vaQuerySurfaceError to find out further details to know if has real hw reset
+ * happened on this surface since umd and kmd could recover the context from reset with success in sometimes.
+ * VA_STATUS_HW_BUSY or VA_STATUS_SUCCESSFULL also could be passed in as "error_status".
+ *
+ * Upon the return, error_info will point to an array of _VASurfaceDecodeMBErrors structure,
+ * which is allocated and filled by libVA with detailed information on the VADecodeErrorType.
  * The array is terminated if "status==-1" is detected.
  */
 VAStatus vaQuerySurfaceError(
@@ -4566,6 +4583,11 @@ VAStatus vaSyncBuffer(
  * Four bytes per pixel: X, Y, U, V.
  */
 #define VA_FOURCC_XYUV          0x56555958
+/** Q416: three-plane 16-bit YUV 4:4:4.
+ *
+ * The three planes contain Y, U and V respectively.
+ */
+#define VA_FOURCC_Q416          0x36313451
 
 /* byte order */
 #define VA_LSB_FIRST        1
