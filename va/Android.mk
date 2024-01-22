@@ -64,7 +64,7 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH)/..
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libva
 LOCAL_MODULE_CLASS := SHARED_LIBRARIES
-#LOCAL_PROPRIETARY_MODULE := true
+LOCAL_PROPRIETARY_MODULE := true
 
 LOCAL_SHARED_LIBRARIES := libdl libdrm libcutils liblog
 ifeq ($(shell test $(PLATFORM_SDK_VERSION) -ge 27; echo $$?), 0)
@@ -104,7 +104,7 @@ LOCAL_C_INCLUDES += \
 
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libva-android
-#LOCAL_PROPRIETARY_MODULE := true
+LOCAL_PROPRIETARY_MODULE := true
 
 LOCAL_SHARED_LIBRARIES := libva libdrm liblog
 
